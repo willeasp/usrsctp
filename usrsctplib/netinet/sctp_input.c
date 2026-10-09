@@ -5945,8 +5945,14 @@ cksum_validated:
 			upcall_socket = stcb->sctp_socket;
 		}
 		SOCK_LOCK(upcall_socket);
-		soref(upcall_socket);
-		SOCK_UNLOCK(upcall_socket);
+		if (upcall_socket->so_count > 0) {
+			soref(upcall_socket);
+			SOCK_UNLOCK(upcall_socket);
+		} else {
+			/* usrsctp_close() dropped the last reference: the socket is being freed. */
+			SOCK_UNLOCK(upcall_socket);
+			upcall_socket = NULL;
+		}
 	}
 #endif
 	if (IS_SCTP_CONTROL(ch)) {
@@ -6048,8 +6054,14 @@ cksum_validated:
 			upcall_socket = stcb->sctp_socket;
 		}
 		SOCK_LOCK(upcall_socket);
-		soref(upcall_socket);
-		SOCK_UNLOCK(upcall_socket);
+		if (upcall_socket->so_count > 0) {
+			soref(upcall_socket);
+			SOCK_UNLOCK(upcall_socket);
+		} else {
+			/* usrsctp_close() dropped the last reference: the socket is being freed. */
+			SOCK_UNLOCK(upcall_socket);
+			upcall_socket = NULL;
+		}
 	}
 #endif
 
