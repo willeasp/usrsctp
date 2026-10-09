@@ -394,6 +394,7 @@ struct socket * sonewconn(struct socket *head, int connstatus);
 void	socantrcvmore(struct socket *so);
 void	socantsendmore(struct socket *so);
 void	sofree(struct socket *so);
+int	soref_if_live(struct socket *so);
 
 
 

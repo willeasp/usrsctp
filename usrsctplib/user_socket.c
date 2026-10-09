@@ -307,6 +307,23 @@ sofree(struct socket *so)
 
 
 
+/*
+ * soref() unless the socket has no references left.  Such a socket is being
+ * freed (usrsctp_close() dropped the last reference, or it was aborted) or has
+ * not been accepted yet, and must not be revived.  The caller holds
+ * SOCK_LOCK(so).  Returns 1 if a reference was taken.
+ */
+int
+soref_if_live(struct socket *so)
+{
+	SOCK_LOCK_ASSERT(so);
+	if (so->so_count == 0) {
+		return (0);
+	}
+	soref(so);
+	return (1);
+}
+
 /* Taken from  /src/sys/kern/uipc_socket.c */
 void
 soabort(struct socket *so)

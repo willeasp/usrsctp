@@ -1888,8 +1888,12 @@ sctp_timeout_handler(void *t)
 	    (stcb->sctp_socket != NULL)) {
 		upcall_socket = stcb->sctp_socket;
 		SOCK_LOCK(upcall_socket);
-		soref(upcall_socket);
-		SOCK_UNLOCK(upcall_socket);
+		if (soref_if_live(upcall_socket)) {
+			SOCK_UNLOCK(upcall_socket);
+		} else {
+			SOCK_UNLOCK(upcall_socket);
+			upcall_socket = NULL;
+		}
 	}
 #endif
 	/* call the handler for the appropriate timer type */
