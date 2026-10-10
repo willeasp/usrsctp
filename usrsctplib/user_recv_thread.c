@@ -348,11 +348,20 @@ recv_function_raw(void *arg)
 		msg.msg_controllen = 0;
 		res = recvmsg(SCTP_BASE_VAR(userspace_rawsctp), &msg, 0);
 		if (res < 0) {
-			if (errno == EAGAIN || errno == EINTR) {
-				continue;
-			} else {
+			if (errno == EBADF || errno == ENOTSOCK) {
+				/* The socket was closed: usrsctp_finish() */
 				break;
 			}
+			/*
+			 * EAGAIN, EINTR, or an error that loses only this packet,
+			 * such as EFAULT for a GSO packet whose fragments the
+			 * kernel changed under the raw socket (CVE-2025-38718).
+			 * Exiting here would stop all reception for good.
+			 */
+			if (errno != EAGAIN && errno != EINTR) {
+				SCTPDBG(SCTP_DEBUG_USR, "%s: recvmsg failed (errno = %d), packet dropped.\n", __func__, errno);
+			}
+			continue;
 		}
 		ncounter = (unsigned int)res;
 		n = (int)res;
@@ -549,11 +558,20 @@ recv_function_raw6(void *arg)
 		msg.msg_flags = 0;
 		res = recvmsg(SCTP_BASE_VAR(userspace_rawsctp6), &msg, 0);
 		if (res < 0) {
-			if (errno == EAGAIN || errno == EINTR) {
-				continue;
-			} else {
+			if (errno == EBADF || errno == ENOTSOCK) {
+				/* The socket was closed: usrsctp_finish() */
 				break;
 			}
+			/*
+			 * EAGAIN, EINTR, or an error that loses only this packet,
+			 * such as EFAULT for a GSO packet whose fragments the
+			 * kernel changed under the raw socket (CVE-2025-38718).
+			 * Exiting here would stop all reception for good.
+			 */
+			if (errno != EAGAIN && errno != EINTR) {
+				SCTPDBG(SCTP_DEBUG_USR, "%s: recvmsg failed (errno = %d), packet dropped.\n", __func__, errno);
+			}
+			continue;
 		}
 		ncounter = (unsigned int)res;
 		n = (int)res;
@@ -728,11 +746,18 @@ recv_function_udp(void *arg)
 
 		res = recvmsg(SCTP_BASE_VAR(userspace_udpsctp), &msg, 0);
 		if (res < 0) {
-			if (errno == EAGAIN || errno == EINTR) {
-				continue;
-			} else {
+			if (errno == EBADF || errno == ENOTSOCK) {
+				/* The socket was closed: usrsctp_finish() */
 				break;
 			}
+			/*
+			 * EAGAIN, EINTR, or an error that loses only this
+			 * packet. Exiting here would stop all reception for good.
+			 */
+			if (errno != EAGAIN && errno != EINTR) {
+				SCTPDBG(SCTP_DEBUG_USR, "%s: recvmsg failed (errno = %d), packet dropped.\n", __func__, errno);
+			}
+			continue;
 		}
 		ncounter = (unsigned int)res;
 		n = (int)res;
@@ -940,11 +965,18 @@ recv_function_udp6(void *arg)
 
 		res = recvmsg(SCTP_BASE_VAR(userspace_udpsctp6), &msg, 0);
 		if (res < 0) {
-			if (errno == EAGAIN || errno == EINTR) {
-				continue;
-			} else {
+			if (errno == EBADF || errno == ENOTSOCK) {
+				/* The socket was closed: usrsctp_finish() */
 				break;
 			}
+			/*
+			 * EAGAIN, EINTR, or an error that loses only this
+			 * packet. Exiting here would stop all reception for good.
+			 */
+			if (errno != EAGAIN && errno != EINTR) {
+				SCTPDBG(SCTP_DEBUG_USR, "%s: recvmsg failed (errno = %d), packet dropped.\n", __func__, errno);
+			}
+			continue;
 		}
 		ncounter = (unsigned int)res;
 		n = (int)res;
