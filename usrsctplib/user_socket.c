@@ -2854,6 +2854,36 @@ usrsctp_freeladdrs(struct sockaddr *addrs)
 	free(fr_addr);
 }
 
+#if !defined(_WIN32) && (defined(INET) || defined(INET6))
+#if defined(__APPLE__)
+/*
+ * With MSG_DONTWAIT, the macOS kernel fails a send with EAGAIN instead of
+ * waiting when another thread is sending on the same socket. The timer, input
+ * and user threads all send on the shared raw and UDP sockets, so serialize
+ * the sends here rather than drop packets.
+ */
+static pthread_mutex_t sctp_userspace_send_mtx = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+/* Returns 0 or the errno of the failed send. */
+static int
+sctp_userspace_sendmsg(int fd, struct msghdr *msg_hdr)
+{
+	int error = 0;
+
+#if defined(__APPLE__)
+	pthread_mutex_lock(&sctp_userspace_send_mtx);
+#endif
+	if (sendmsg(fd, msg_hdr, MSG_DONTWAIT) < 0) {
+		error = errno;
+	}
+#if defined(__APPLE__)
+	pthread_mutex_unlock(&sctp_userspace_send_mtx);
+#endif
+	return (error);
+}
+#endif
+
 #ifdef INET
 void
 sctp_userspace_ip_output(int *result, struct mbuf *o_pak,
@@ -2961,14 +2991,10 @@ sctp_userspace_ip_output(int *result, struct mbuf *o_pak,
 	msg_hdr.msg_flags = 0;
 
 	if ((!use_udp_tunneling) && (SCTP_BASE_VAR(userspace_rawsctp) != -1)) {
-		if (sendmsg(SCTP_BASE_VAR(userspace_rawsctp), &msg_hdr, MSG_DONTWAIT) < 0) {
-			*result = errno;
-		}
+		*result = sctp_userspace_sendmsg(SCTP_BASE_VAR(userspace_rawsctp), &msg_hdr);
 	}
 	if ((use_udp_tunneling) && (SCTP_BASE_VAR(userspace_udpsctp) != -1)) {
-		if (sendmsg(SCTP_BASE_VAR(userspace_udpsctp), &msg_hdr, MSG_DONTWAIT) < 0) {
-			*result = errno;
-		}
+		*result = sctp_userspace_sendmsg(SCTP_BASE_VAR(userspace_udpsctp), &msg_hdr);
 	}
 #else
 	win_msg_hdr.name = (struct sockaddr *) &dst;
@@ -3102,14 +3128,10 @@ void sctp_userspace_ip6_output(int *result, struct mbuf *o_pak,
 	msg_hdr.msg_flags = 0;
 
 	if ((!use_udp_tunneling) && (SCTP_BASE_VAR(userspace_rawsctp6) != -1)) {
-		if (sendmsg(SCTP_BASE_VAR(userspace_rawsctp6), &msg_hdr, MSG_DONTWAIT)< 0) {
-			*result = errno;
-		}
+		*result = sctp_userspace_sendmsg(SCTP_BASE_VAR(userspace_rawsctp6), &msg_hdr);
 	}
 	if ((use_udp_tunneling) && (SCTP_BASE_VAR(userspace_udpsctp6) != -1)) {
-		if (sendmsg(SCTP_BASE_VAR(userspace_udpsctp6), &msg_hdr, MSG_DONTWAIT) < 0) {
-			*result = errno;
-		}
+		*result = sctp_userspace_sendmsg(SCTP_BASE_VAR(userspace_udpsctp6), &msg_hdr);
 	}
 #else
 	win_msg_hdr.name = (struct sockaddr *) &dst;
