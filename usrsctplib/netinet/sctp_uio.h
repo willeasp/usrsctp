@@ -442,8 +442,14 @@ struct sctp_pdapi_event {
 	uint16_t pdapi_flags;
 	uint32_t pdapi_length;
 	uint32_t pdapi_indication;
+#if defined(__Userspace__)
+	/* As in usrsctp.h, which follows RFC 6458. */
+	uint32_t pdapi_stream;
+	uint32_t pdapi_seq;
+#else
 	uint16_t pdapi_stream;
 	uint16_t pdapi_seq;
+#endif
 	sctp_assoc_t pdapi_assoc_id;
 };
 
