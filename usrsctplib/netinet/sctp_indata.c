@@ -5745,8 +5745,14 @@ sctp_handle_forward_tsn(struct sctp_tcb *stcb,
 				}
 			}
 			TAILQ_FOREACH(control, &stcb->sctp_ep->read_queue, next) {
+				if ((control->stcb != stcb) ||
+				    (control->spec_flags & M_NOTIFICATION)) {
+					/* Another association's, or not a message. */
+					continue;
+				}
 				if ((control->sinfo_stream == sid) &&
-				    (SCTP_MID_EQ(asoc->idata_supported, control->mid, mid))) {
+				    (SCTP_MID_EQ(asoc->idata_supported, control->mid, mid)) &&
+				    (control->end_added == 0)) {
 					control->pdapi_aborted = 1;
 					control->end_added = 1;
 					if (control->on_strm_q == SCTP_ON_ORDERED) {
