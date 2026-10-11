@@ -756,6 +756,16 @@ struct sctp_prstatus {
 	uint64_t sprstat_abandoned_sent;
 };
 
+/*
+ * SCTP_GET_SNDBUF_AVAIL: the bytes a send of a whole message on the association
+ * can add now, as the send path computes them (without space reserved by
+ * sends in progress); 0 while the association has too many chunks queued.
+ */
+struct sctp_sndbuf_avail {
+	sctp_assoc_t ssa_assoc_id;
+	uint32_t ssa_avail;
+};
+
 struct sctp_cwnd_args {
 	struct sctp_nets *net;	/* network to */ /* FIXME: LP64 issue */
 	uint32_t cwnd_new_value;/* cwnd in k */

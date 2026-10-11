@@ -581,6 +581,8 @@ struct sctp_event_subscribe {
 #define SCTP_TIMEOUTS                   0x00000106
 #define SCTP_PR_STREAM_STATUS           0x00000107
 #define SCTP_PR_ASSOC_STATUS            0x00000108
+/* read only, implementation specific */
+#define SCTP_GET_SNDBUF_AVAIL           0x00001106
 
 /*
  * write-only options
@@ -853,6 +855,16 @@ struct sctp_prstatus {
 	uint16_t sprstat_policy;
 	uint64_t sprstat_abandoned_unsent;
 	uint64_t sprstat_abandoned_sent;
+};
+
+/*
+ * SCTP_GET_SNDBUF_AVAIL: the bytes a send of a whole message on the association
+ * can add now, as the send path computes them (without space reserved by
+ * sends in progress); 0 while the association has too many chunks queued.
+ */
+struct sctp_sndbuf_avail {
+	sctp_assoc_t ssa_assoc_id;
+	uint32_t ssa_avail;
 };
 
 /* Standard TCP Congestion Control */
