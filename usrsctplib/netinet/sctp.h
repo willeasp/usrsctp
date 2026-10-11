@@ -208,6 +208,7 @@ struct sctp_paramhdr {
 #define SCTP_GET_STAT_LOG		0x00001103
 #define SCTP_PCB_STATUS			0x00001104
 #define SCTP_GET_NONCE_VALUES           0x00001105
+#define SCTP_GET_SNDBUF_AVAIL           0x00001106
 
 /* Special hook for dynamically setting primary for all assoc's,
  * this is a write only option that requires root privilege.

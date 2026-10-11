@@ -4459,6 +4459,33 @@ sctp_getopt(struct socket *so, int optname, void *optval, size_t *optsize,
 		}
 		break;
 	}
+	case SCTP_GET_SNDBUF_AVAIL:
+	{
+		struct sctp_sndbuf_avail *ssa;
+		uint32_t inqueue_bytes, limit;
+
+		SCTP_CHECK_AND_CAST(ssa, optval, struct sctp_sndbuf_avail, *optsize);
+		SCTP_FIND_STCB(inp, stcb, ssa->ssa_assoc_id);
+
+		if (stcb) {
+			/* As sctp_lower_sosend() decides whether a send fits. */
+			inqueue_bytes = stcb->asoc.total_output_queue_size -
+			                (stcb->asoc.chunks_on_out_queue * SCTP_DATA_CHUNK_OVERHEAD(stcb));
+			limit = (uint32_t)SCTP_SB_LIMIT_SND(inp->sctp_socket);
+			if ((stcb->asoc.chunks_on_out_queue >= SCTP_BASE_SYSCTL(sctp_max_chunks_on_queue)) ||
+			    (inqueue_bytes >= limit)) {
+				ssa->ssa_avail = 0;
+			} else {
+				ssa->ssa_avail = limit - inqueue_bytes;
+			}
+			SCTP_TCB_UNLOCK(stcb);
+			*optsize = sizeof(struct sctp_sndbuf_avail);
+		} else {
+			SCTP_LTRACE_ERR_RET(inp, NULL, NULL, SCTP_FROM_SCTP_USRREQ, ENOTCONN);
+			error = ENOTCONN;
+		}
+		break;
+	}
 	case SCTP_MAX_CWND:
 	{
 		struct sctp_assoc_value *av;
