@@ -2214,7 +2214,9 @@ out_decr:
 #if defined(__Userspace__)
 	if (upcall_socket != NULL) {
 		if ((upcall_socket->so_upcall != NULL) &&
-		    (upcall_socket->so_error != 0)) {
+		    (soreadable(upcall_socket) ||
+		     sowriteable(upcall_socket) ||
+		     (upcall_socket->so_error != 0))) {
 			(*upcall_socket->so_upcall)(upcall_socket, upcall_socket->so_upcallarg, M_NOWAIT);
 		}
 		ACCEPT_LOCK();
