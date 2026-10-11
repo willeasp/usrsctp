@@ -452,11 +452,12 @@ void	sofree(struct socket *so);
 	  ((so)->so_proto->pr_flags&PR_CONNREQUIRED)==0)) || \
      ((so)->so_snd.sb_state & SBS_CANTSENDMORE) || \
      (so)->so_error)
-#else  /* line with PR_CONNREQUIRED removed */
+#else  /* PR_CONNREQUIRED replaced by the socket type: only SOCK_STREAM needs a connection */
 /* can we write something to so? */
 #define	sowriteable(so) \
     ((sbspace(&(so)->so_snd) >= (so)->so_snd.sb_lowat && \
-      (((so)->so_state&SS_ISCONNECTED))) ||              \
+      (((so)->so_state&SS_ISCONNECTED) || \
+       (so)->so_type != SOCK_STREAM)) || \
      ((so)->so_snd.sb_state & SBS_CANTSENDMORE) || \
      (so)->so_error)
 #endif
