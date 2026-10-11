@@ -6710,6 +6710,10 @@ sctp_sorecvmsg(struct socket *so,
 				if ((SCTP_BUF_NEXT(m)== NULL) &&
 				    (control->end_added)) {
 					out_flags |= MSG_EOR;
+					if (control->pdapi_aborted) {
+						/* The peer will never send the rest. */
+						out_flags |= MSG_TRUNC;
+					}
 					if ((control->do_not_ref_stcb == 0) &&
 					    (control->stcb != NULL) &&
 					    ((control->spec_flags & M_NOTIFICATION) == 0))
@@ -7023,6 +7027,10 @@ sctp_sorecvmsg(struct socket *so,
 		}
 		if (control->end_added) {
 			out_flags |= MSG_EOR;
+			if (control->pdapi_aborted) {
+				/* The peer will never send the rest. */
+				out_flags |= MSG_TRUNC;
+			}
 			if ((control->do_not_ref_stcb == 0) &&
 			    (control->stcb != NULL) &&
 			    ((control->spec_flags & M_NOTIFICATION) == 0))
