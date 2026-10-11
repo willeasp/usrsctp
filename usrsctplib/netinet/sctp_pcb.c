@@ -5265,10 +5265,29 @@ sctp_add_vtag_to_timewait(uint32_t tag, uint16_t lport, uint16_t rport)
 	}
 }
 
+static void
+sctp_free_reasm_chunks(struct sctp_tcb *stcb, struct sctp_queued_to_read *control)
+{
+	struct sctp_tmit_chunk *chk, *nchk;
+
+	TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
+		TAILQ_REMOVE(&control->reasm, chk, sctp_next);
+		if (chk->data) {
+			sctp_m_freem(chk->data);
+			chk->data = NULL;
+		}
+		if (chk->holds_key_ref)
+			sctp_auth_key_release(stcb, chk->auth_keyid, SCTP_SO_LOCKED);
+		sctp_free_remote_addr(chk->whoTo);
+		SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_chunk), chk);
+		SCTP_DECR_CHK_COUNT();
+		/*sa_ignore FREED_MEMORY*/
+	}
+}
+
 void
 sctp_clean_up_stream(struct sctp_tcb *stcb, struct sctp_readhead *rh)
 {
-	struct sctp_tmit_chunk *chk, *nchk;
 	struct sctp_queued_to_read *control, *ncontrol;
 
 	TAILQ_FOREACH_SAFE(control, rh, next_instrm, ncontrol) {
@@ -5282,19 +5301,7 @@ sctp_clean_up_stream(struct sctp_tcb *stcb, struct sctp_readhead *rh)
 			}
 		}
 		/* Reassembly free? */
-		TAILQ_FOREACH_SAFE(chk, &control->reasm, sctp_next, nchk) {
-			TAILQ_REMOVE(&control->reasm, chk, sctp_next);
-			if (chk->data) {
-				sctp_m_freem(chk->data);
-				chk->data = NULL;
-			}
-			if (chk->holds_key_ref)
-				sctp_auth_key_release(stcb, chk->auth_keyid, SCTP_SO_LOCKED);
-			sctp_free_remote_addr(chk->whoTo);
-			SCTP_ZONE_FREE(SCTP_BASE_INFO(ipi_zone_chunk), chk);
-			SCTP_DECR_CHK_COUNT();
-			/*sa_ignore FREED_MEMORY*/
-		}
+		sctp_free_reasm_chunks(stcb, control);
 		/*
 		 * We don't free the address here
 		 * since all the net's were freed
@@ -5415,6 +5422,19 @@ sctp_free_assoc(struct sctp_inpcb *inp, struct sctp_tcb *stcb, int from_inpcbfre
 					}
 					/* Add an end to wake them */
 					sq->end_added = 1;
+					/*
+					 * The reader frees it once it has read the rest,
+					 * so take it off its stream queue now, as the
+					 * FORWARD-TSN path does: cleaning up the streams
+					 * below would otherwise touch it after that.
+					 */
+					if (sq->on_strm_q == SCTP_ON_ORDERED) {
+						TAILQ_REMOVE(&stcb->asoc.strmin[sq->sinfo_stream].inqueue, sq, next_instrm);
+					} else if (sq->on_strm_q == SCTP_ON_UNORDERED) {
+						TAILQ_REMOVE(&stcb->asoc.strmin[sq->sinfo_stream].uno_inqueue, sq, next_instrm);
+					}
+					sq->on_strm_q = 0;
+					sctp_free_reasm_chunks(stcb, sq);
 				}
 			}
 		}
